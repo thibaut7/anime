@@ -15,8 +15,8 @@ class AnimeItem(scrapy.Item):
     Studios = scrapy.Field()
     Start_date = scrapy.Field()
     Genres = scrapy.Field()
-    rate = scrapy.Field()
-    total = scrapy.Field()
-    summary_description = scrapy.Field()
+    Rate = scrapy.Field()
+    Total = scrapy.Field()
+    Summary_description = scrapy.Field()
     # define the fields for your item here like:
     # name = scrapy.Field()

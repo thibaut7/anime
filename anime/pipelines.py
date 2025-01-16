@@ -43,8 +43,8 @@ class AnimePipeline:
             adapter.get('Studios'),
             adapter.get('Start_date'),
             adapter.get('Genres'),
-            adapter.get('rate'),
-            adapter.get('total'),
-            adapter.get('summary_description')
+            adapter.get('Rate'),
+            adapter.get('Total'),
+            adapter.get('Summary_description')
         ])
         return item
