@@ -6,11 +6,13 @@
 
 # useful for handling different item types with a single interface
 import csv
+import os
 from itemadapter import ItemAdapter
 
 
 class AnimePipeline:
     def open_spider(self, spider):
+        os.makedirs('output', exist_ok=True)
         self.file = open('output/anime_data.csv', 'w', newline='', encoding='utf-8')
         self.writer = csv.writer(self.file)
         self.writer.writerow([
