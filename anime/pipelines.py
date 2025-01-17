@@ -1,50 +1,47 @@
-# Define your item pipelines here
-#
-# Don't forget to add your pipeline to the ITEM_PIPELINES setting
-# See: https://docs.scrapy.org/en/latest/topics/item-pipeline.html
+import base64
+import requests
+from scrapy.exceptions import DropItem
 
-
-# useful for handling different item types with a single interface
-import csv
-import os
-from itemadapter import ItemAdapter
-
-
-class AnimePipeline:
-    def open_spider(self, spider):
-        os.makedirs('output', exist_ok=True)
-        self.file = open('output/anime_data.csv', 'w', newline='', encoding='utf-8')
-        self.writer = csv.writer(self.file)
-        self.writer.writerow([
-            "Native",
-            "Romaji",
-            "English",
-            "Type",
-            "Status",
-            "Studios",
-            "Start date",
-            "Genre(s)",
-            "Rate",
-            "Total",
-            "Summary Description"
-        ])
-
-    def close_spider(self, spider):
-        self.file.close()
-
+class CaptchaPipeline:
     def process_item(self, item, spider):
-        adapter = ItemAdapter(item)
-        self.writer.writerow([
-            adapter.get('Native'),
-            adapter.get('Romaji'),
-            adapter.get('English'),
-            adapter.get('Type'),
-            adapter.get('Status'),
-            adapter.get('Studios'),
-            adapter.get('Start_date'),
-            adapter.get('Genres'),
-            adapter.get('Rate'),
-            adapter.get('Total'),
-            adapter.get('Summary_description')
-        ])
+        captcha_url = item.get('captcha_url')
+        if not captcha_url:
+            return item  # Pas de captcha à résoudre
+
+        api_key = spider.settings.get('CAPTCHA_API_KEY')
+        if not api_key:
+            spider.logger.error("Aucune API Key pour le service de captcha.")
+            raise DropItem("Résolution de captcha impossible")
+
+        # Télécharger l'image captcha
+        captcha_response = item.get('captcha_response')
+        captcha_image = captcha_response.body
+        encoded_image = base64.b64encode(captcha_image).decode('utf-8')
+
+        # Envoyer l'image au service 2Captcha
+        response = requests.post(
+            'http://2captcha.com/in.php',
+            data={'key': api_key, 'method': 'base64', 'body': encoded_image}
+        )
+        if response.status_code != 200 or 'ERROR' in response.text:
+            spider.logger.error(f"Erreur lors de la soumission du captcha: {response.text}")
+            raise DropItem("Erreur captcha")
+
+        captcha_id = response.text.split('|')[-1]
+
+        # Obtenir la solution du captcha
+        solution_url = f'http://2captcha.com/res.php?key={api_key}&action=get&id={captcha_id}'
+        while True:
+            result = requests.get(solution_url)
+            if result.text == 'CAPCHA_NOT_READY':
+                continue  # Attendre que le captcha soit résolu
+            if 'ERROR' in result.text:
+                spider.logger.error(f"Erreur de résolution du captcha: {result.text}")
+                raise DropItem("Erreur captcha")
+
+            solution = result.text.split('|')[-1]
+            spider.logger.info(f"Captcha résolu : {solution}")
+            item['captcha_solution'] = solution
+            break
+
         return item
